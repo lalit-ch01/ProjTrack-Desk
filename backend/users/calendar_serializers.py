@@ -33,18 +33,36 @@ class NotificationSerializer(serializers.ModelSerializer):
     read_at = serializers.SerializerMethodField()
     deleted = serializers.SerializerMethodField()
     recipient_count = serializers.SerializerMethodField()
+    recipients = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
         fields = ['id', 'title', 'message', 'sent_by', 'sent_by_name', 
                  'sent_to_ids', 'created_at', 'related_event', 'read', 'read_at', 
-                 'deleted', 'recipient_count']
+                 'deleted', 'recipient_count', 'recipients']
         read_only_fields = ['sent_by']
 
     def get_sent_by_name(self, obj):
         if obj.sent_by:
             return f"{obj.sent_by.first_name} {obj.sent_by.last_name}".strip() or obj.sent_by.username
         return "Unknown"
+
+    def get_recipients(self, obj):
+        """Get list of recipient details"""
+        try:
+            recipients = NotificationRecipient.objects.filter(notification=obj)
+            return [
+                {
+                    'id': recipient.recipient.id,
+                    'name': f"{recipient.recipient.first_name} {recipient.recipient.last_name}".strip() or recipient.recipient.username,
+                    'role': recipient.recipient.role,
+                    'read': recipient.read,
+                    'read_at': recipient.read_at
+                }
+                for recipient in recipients
+            ]
+        except:
+            return []
 
     def get_read(self, obj):
         request = self.context.get('request')

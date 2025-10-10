@@ -14,11 +14,13 @@ class UserSerializer(serializers.ModelSerializer):
     )
 
     guide_name = serializers.CharField(read_only=True)
+    profile_image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = CustomUser
         fields = ('id', 'username', 'email', 'password', 'role', 'first_name', 'last_name',
-                 'registration_number', 'department', 'guide', 'guide_name')
+                 'registration_number', 'department', 'guide', 'guide_name', 'profile_image', 
+                 'profile_image_url', 'description')
         extra_kwargs = {
             'username': {
                 'error_messages': {
@@ -41,9 +43,37 @@ class UserSerializer(serializers.ModelSerializer):
             }
         }
 
+    def get_profile_image_url(self, obj):
+        if obj.profile_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_image.url)
+        return None
+
     def validate_username(self, value):
         if len(value) < 3:
             raise serializers.ValidationError("Username must be at least 3 characters long")
+        
+        # Check for username uniqueness during creation
+        if not self.instance and CustomUser.objects.filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken")
+        
+        return value
+
+    def validate_email(self, value):
+        # Check for email uniqueness during creation
+        if not self.instance and CustomUser.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email address is already taken")
+        
+        return value
+
+    def validate_registration_number(self, value):
+        # Only validate if registration number is provided and not empty
+        if value and value.strip():
+            # Check for registration number uniqueness during creation
+            if not self.instance and CustomUser.objects.filter(registration_number=value).exists():
+                raise serializers.ValidationError("This registration number is already taken")
+        
         return value
 
     def create(self, validated_data):
@@ -55,6 +85,8 @@ class UserSerializer(serializers.ModelSerializer):
                 password=validated_data['password'],
                 first_name=validated_data.get('first_name', ''),
                 last_name=validated_data.get('last_name', ''),
+                registration_number=validated_data.get('registration_number', ''),
+                department=validated_data.get('department', ''),
                 role=role
             )
             return user
@@ -105,3 +137,90 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'is_staff': self.user.is_staff
         })
         return data
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    profile_image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CustomUser
+        fields = ('username', 'profile_image', 'profile_image_url', 'description')
+        
+    def get_profile_image_url(self, obj):
+        if obj.profile_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_image.url)
+        return None
+
+    def validate_username(self, value):
+        if len(value) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long")
+        
+        # Check if username is taken by another user
+        user = self.instance
+        if CustomUser.objects.filter(username=value).exclude(id=user.id).exists():
+            raise serializers.ValidationError("This username is already taken")
+        
+        return value
+
+    def validate_description(self, value):
+        if value and len(value) > 500:
+            raise serializers.ValidationError("Description cannot exceed 500 characters")
+        return value
+
+class AdminUserEditSerializer(serializers.ModelSerializer):
+    """Admin-only serializer for editing sensitive user details"""
+    guide_name = serializers.SerializerMethodField()
+    profile_image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 
+                 'registration_number', 'department', 'role', 'guide', 'guide_name',
+                 'profile_image', 'profile_image_url', 'description')
+        
+    def get_guide_name(self, obj):
+        if obj.guide:
+            return f"{obj.guide.first_name} {obj.guide.last_name}".strip() or obj.guide.username
+        return None
+        
+    def get_profile_image_url(self, obj):
+        if obj.profile_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_image.url)
+        return None
+
+    def validate_username(self, value):
+        if len(value) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long")
+        
+        # Check if username is taken by another user
+        user = self.instance
+        if user and CustomUser.objects.filter(username=value).exclude(id=user.id).exists():
+            raise serializers.ValidationError("This username is already taken")
+        
+        return value
+
+    def validate_email(self, value):
+        # Check if email is taken by another user
+        user = self.instance
+        if user and CustomUser.objects.filter(email=value).exclude(id=user.id).exists():
+            raise serializers.ValidationError("This email is already taken")
+        
+        return value
+
+    def validate_registration_number(self, value):
+        # Only validate if registration number is provided and not empty
+        if value and value.strip():
+            # Check if registration number is taken by another user
+            user = self.instance
+            if user and CustomUser.objects.filter(registration_number=value).exclude(id=user.id).exists():
+                raise serializers.ValidationError("This registration number is already taken")
+        
+        return value
+
+    def validate_description(self, value):
+        if value and len(value) > 500:
+            raise serializers.ValidationError("Description cannot exceed 500 characters")
+        return value

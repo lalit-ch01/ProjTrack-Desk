@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import CalendarEvent, Notification, NotificationRecipient
 from .calendar_serializers import CalendarEventSerializer, NotificationSerializer
-from .permissions import IsCoordinator, CanSendNotifications
+from .permissions import IsCoordinator, CanSendNotifications, IsAdminOrCoordinator
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.utils import timezone
@@ -16,7 +16,7 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [permissions.IsAuthenticated, IsCoordinator]
+            permission_classes = [permissions.IsAuthenticated, IsAdminOrCoordinator]
         else:
             permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -32,8 +32,8 @@ class NotificationViewSet(viewsets.ModelViewSet):
         user = self.request.user
         try:
             if self.action == 'sent':
-                # Show sent notifications
-                return Notification.objects.filter(sent_by=user)
+                # Show sent notifications (not deleted by sender)
+                return Notification.objects.filter(sent_by=user, deleted_by_sender=False)
             else:
                 # Show received notifications (not deleted)
                 # First check if any NotificationRecipient records exist
@@ -58,9 +58,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def sent(self, request):
-        """Get all notifications sent by current user"""
+        """Get all notifications sent by current user (not deleted by sender)"""
         try:
-            notifications = Notification.objects.filter(sent_by=request.user)
+            notifications = Notification.objects.filter(
+                sent_by=request.user, 
+                deleted_by_sender=False
+            )
             serializer = self.get_serializer(notifications, many=True)
             return Response(serializer.data)
         except Exception as e:
@@ -85,47 +88,67 @@ class NotificationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def mark_as_read(self, request, pk=None):
         """Mark a notification as read"""
-        notification = self.get_object()
-        recipient = NotificationRecipient.objects.filter(
-            notification=notification, recipient=request.user
-        ).first()
-        
-        if recipient:
-            recipient.read = True
-            recipient.read_at = timezone.now()
-            recipient.save()
-            return Response({'status': 'marked as read'})
-        return Response({'error': 'Notification not found'}, status=404)
+        try:
+            notification = Notification.objects.get(pk=pk)
+            recipient = NotificationRecipient.objects.filter(
+                notification=notification, recipient=request.user
+            ).first()
+            
+            if recipient:
+                recipient.read = True
+                recipient.read_at = timezone.now()
+                recipient.save()
+                return Response({'status': 'marked as read'})
+            return Response({'error': 'Notification not found'}, status=404)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Notification not found'}, status=404)
 
     @action(detail=True, methods=['post'])
     def mark_as_unread(self, request, pk=None):
         """Mark a notification as unread"""
-        notification = self.get_object()
-        recipient = NotificationRecipient.objects.filter(
-            notification=notification, recipient=request.user
-        ).first()
-        
-        if recipient:
-            recipient.read = False
-            recipient.read_at = None
-            recipient.save()
-            return Response({'status': 'marked as unread'})
-        return Response({'error': 'Notification not found'}, status=404)
+        try:
+            notification = Notification.objects.get(pk=pk)
+            recipient = NotificationRecipient.objects.filter(
+                notification=notification, recipient=request.user
+            ).first()
+            
+            if recipient:
+                recipient.read = False
+                recipient.read_at = None
+                recipient.save()
+                return Response({'status': 'marked as unread'})
+            return Response({'error': 'Notification not found'}, status=404)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Notification not found'}, status=404)
 
     @action(detail=True, methods=['post'])
     def delete_notification(self, request, pk=None):
         """Soft delete a notification for current user"""
-        notification = self.get_object()
-        recipient = NotificationRecipient.objects.filter(
-            notification=notification, recipient=request.user
-        ).first()
-        
-        if recipient:
-            recipient.deleted = True
-            recipient.deleted_at = timezone.now()
-            recipient.save()
-            return Response({'status': 'notification deleted'})
-        return Response({'error': 'Notification not found'}, status=404)
+        try:
+            # Try to get the notification directly first
+            notification = Notification.objects.get(pk=pk)
+            
+            # If user is the sender, mark the notification as deleted by sender
+            if notification.sent_by == request.user:
+                notification.deleted_by_sender = True
+                notification.save()
+                return Response({'status': 'notification hidden from sent'})
+            
+            # Otherwise, soft delete for the recipient
+            recipient = NotificationRecipient.objects.filter(
+                notification=notification, recipient=request.user
+            ).first()
+            
+            if recipient:
+                recipient.deleted = True
+                recipient.deleted_at = timezone.now()
+                recipient.save()
+                return Response({'status': 'notification deleted'})
+            
+            return Response({'error': 'Notification not found or access denied'}, status=404)
+            
+        except Notification.DoesNotExist:
+            return Response({'error': 'Notification not found'}, status=404)
 
     @action(detail=False, methods=['post'])
     def bulk_action(self, request):
@@ -136,21 +159,38 @@ class NotificationViewSet(viewsets.ModelViewSet):
         if not action_type or not notification_ids:
             return Response({'error': 'action and notification_ids required'}, status=400)
         
+        # Check if these are sent notifications (user is sender)
+        sent_notifications = Notification.objects.filter(
+            id__in=notification_ids,
+            sent_by=request.user
+        )
+        
+        # Check if these are received notifications (user is recipient)
         recipients = NotificationRecipient.objects.filter(
             notification_id__in=notification_ids,
             recipient=request.user
         )
         
-        if action_type == 'mark_read':
-            recipients.update(read=True, read_at=timezone.now())
-        elif action_type == 'mark_unread':
-            recipients.update(read=False, read_at=None)
-        elif action_type == 'delete':
-            recipients.update(deleted=True, deleted_at=timezone.now())
+        count = 0
+        
+        if action_type == 'delete':
+            # Handle sent notifications deletion
+            if sent_notifications.exists():
+                count += sent_notifications.update(deleted_by_sender=True)
+            # Handle received notifications deletion
+            if recipients.exists():
+                count += recipients.update(deleted=True, deleted_at=timezone.now())
+        elif action_type in ['mark_read', 'mark_unread']:
+            # Only apply read/unread to received notifications
+            if recipients.exists():
+                if action_type == 'mark_read':
+                    count = recipients.update(read=True, read_at=timezone.now())
+                else:  # mark_unread
+                    count = recipients.update(read=False, read_at=None)
         else:
             return Response({'error': 'Invalid action'}, status=400)
         
-        return Response({'status': f'{action_type} completed for {recipients.count()} notifications'})
+        return Response({'status': f'{action_type} completed for {count} notifications'})
 
     @action(detail=False, methods=['post'])
     def mark_all_read(self, request):

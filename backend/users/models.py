@@ -20,9 +20,30 @@ class CustomUser(AbstractUser):
         related_name='guided_students',
         limit_choices_to={'role': 'guide'}
     )
+    profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
+    description = models.TextField(max_length=500, null=True, blank=True)
 
     def __str__(self):
         return self.username
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Validate registration number uniqueness only if it's provided and not empty
+        if self.registration_number and self.registration_number.strip():
+            # Check for duplicate registration numbers
+            existing_user = CustomUser.objects.filter(
+                registration_number=self.registration_number
+            ).exclude(pk=self.pk).first()
+            
+            if existing_user:
+                raise ValidationError({
+                    'registration_number': 'This registration number is already taken.'
+                })
+
+    def save(self, *args, **kwargs):
+        # Run clean validation before saving
+        self.clean()
+        super().save(*args, **kwargs)
 
     @property
     def guide_name(self):
@@ -56,6 +77,7 @@ class Notification(models.Model):
     sent_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_notifications')
     created_at = models.DateTimeField(auto_now_add=True)
     related_event = models.ForeignKey(CalendarEvent, on_delete=models.CASCADE, null=True, blank=True)
+    deleted_by_sender = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-created_at']

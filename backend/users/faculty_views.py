@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import CustomUser
-from .serializers import UserSerializer
+from .serializers import UserSerializer, AdminUserEditSerializer
 from .permissions import IsAdmin, IsAdminOrCoordinator
 from django.db.models import Q
 
@@ -63,3 +63,28 @@ class FacultyViewSet(viewsets.ModelViewSet):
         faculty.save()
         serializer = self.get_serializer(faculty)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['put'], url_path='admin-edit')
+    def admin_edit(self, request, pk=None):
+        """Admin-only endpoint for editing sensitive faculty details"""
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Only admin can edit sensitive user details'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        faculty = self.get_object()
+        serializer = AdminUserEditSerializer(
+            faculty, 
+            data=request.data, 
+            context={'request': request},
+            partial=True
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Faculty details updated successfully',
+                'faculty': serializer.data
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

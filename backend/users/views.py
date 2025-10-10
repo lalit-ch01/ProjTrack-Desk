@@ -9,7 +9,9 @@ from django.contrib.auth import get_user_model
 from .serializers import (
     UserSerializer, 
     CustomTokenObtainPairSerializer,
-    StudentCreateSerializer
+    StudentCreateSerializer,
+    ProfileUpdateSerializer,
+    AdminUserEditSerializer
 )
 from rest_framework.views import APIView
 from .models import CustomUser
@@ -218,6 +220,31 @@ class StudentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @action(detail=True, methods=['put'], url_path='admin-edit')
+    def admin_edit(self, request, pk=None):
+        """Admin-only endpoint for editing sensitive student details"""
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Only admin can edit sensitive user details'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        student = self.get_object()
+        serializer = AdminUserEditSerializer(
+            student, 
+            data=request.data, 
+            context={'request': request},
+            partial=True
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Student details updated successfully',
+                'student': serializer.data
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def perform_create(self, serializer):
         serializer.save()
         # Send email notification about account creation (implement this later)
@@ -240,8 +267,28 @@ class UserDetailsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
+    
+    def put(self, request):
+        serializer = ProfileUpdateSerializer(
+            request.user, 
+            data=request.data, 
+            context={'request': request},
+            partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            # Return updated user data
+            user_serializer = UserSerializer(request.user, context={'request': request})
+            return Response({
+                'message': 'Profile updated successfully',
+                'user': user_serializer.data
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request):
+        return self.put(request)
 
 # ✅ Update user role – Admin only
 @api_view(['PUT'])

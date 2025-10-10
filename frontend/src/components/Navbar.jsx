@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useResponsive } from '../contexts/ResponsiveContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const { isMobile, toggleSidebar } = useResponsive();
 
   const handleLogout = () => {
     localStorage.clear();
@@ -12,6 +14,19 @@ const Navbar = () => {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary fixed-top shadow-sm">
       <div className="container-fluid">
+        {/* Mobile Hamburger Menu */}
+        {isMobile && (
+          <button
+            id="hamburger-menu"
+            className="btn btn-outline-light me-2"
+            type="button"
+            onClick={toggleSidebar}
+            aria-label="Toggle sidebar"
+          >
+            <i className="bi bi-list"></i>
+          </button>
+        )}
+
         {/* Brand */}
         <Link className="navbar-brand fw-bold" to="/home">
           ProjTrack Desk

@@ -1,20 +1,78 @@
-import React from 'react';
-import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import React, { useState, useEffect } from 'react';
+import Layout from '../components/Layout';
+import axiosInstance from '../utils/axios';
 
 const Home = () => {
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get('/api/auth/user/');
+      setUserProfile(response.data);
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getWelcomeMessage = () => {
+    if (loading) {
+      return "Welcome to ProjTrack Desk";
+    }
+    
+    const firstName = userProfile?.first_name || userProfile?.username || "User";
+    return `Hey ${firstName}, Welcome to ProjTrack Desk`;
+  };
+
+  const getRoleMessage = () => {
+    if (loading || !userProfile?.role) {
+      return "";
+    }
+    
+    const roleMessages = {
+      'admin': 'System Administrator',
+      'coordinator': 'Project Coordinator',
+      'guide': 'Faculty Guide',
+      'student': 'Student'
+    };
+    
+    return roleMessages[userProfile.role] || userProfile.role;
+  };
   return (
-    <div>
-      <Navbar />
-      <div className="d-flex">
-        <Sidebar />
-        <main className="flex-grow-1" style={{ marginLeft: '250px', marginTop: '56px', padding: '2rem' }}>
+    <Layout>
           <div className="container-fluid">
             <div className="row">
               <div className="col-12">
                 <div className="d-flex justify-content-between align-items-center mb-4">
                   <h1 className="h3 mb-0">Dashboard</h1>
-                  <small className="text-muted">Welcome to ProjTrack Desk</small>
+                  <div className="text-end">
+                    <div className="d-flex align-items-center justify-content-end">
+                      <i className="bi bi-person-circle me-2 text-primary" style={{ fontSize: '1.25rem' }}></i>
+                      <div className="text-start">
+                        <small className="text-muted d-block" style={{ lineHeight: '1.5' }}>
+                          {getWelcomeMessage()}
+                        </small>
+                        {loading ? (
+                          <div className="d-flex align-items-center justify-content-start mt-1">
+                            <div className="spinner-border spinner-border-sm text-primary" role="status" style={{ width: '0.75rem', height: '0.75rem' }}>
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                          </div>
+                        ) : getRoleMessage() && (
+                          <small className="fw-bold text-primary d-block" style={{ fontSize: '0.75rem', lineHeight: '1' }}>
+                            {getRoleMessage()}
+                          </small>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="row mb-4">
@@ -148,9 +206,7 @@ const Home = () => {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+    </Layout>
   );
 };
 

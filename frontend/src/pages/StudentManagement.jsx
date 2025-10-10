@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Alert, Badge, InputGroup, FormControl } from 'react-bootstrap';
-import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import Layout from '../components/Layout';
 import axiosInstance from '../utils/axios';
 
 const StudentManagement = () => {
@@ -9,6 +8,8 @@ const StudentManagement = () => {
   const [faculties, setFaculties] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showChangeGuideModal, setShowChangeGuideModal] = useState(false);
+  const [showAdminEditModal, setShowAdminEditModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [selectedGuide, setSelectedGuide] = useState('');
   const [error, setError] = useState('');
@@ -16,6 +17,15 @@ const StudentManagement = () => {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all', 'assigned', 'unassigned'
   const [searchTerm, setSearchTerm] = useState('');
+  const [adminEditFormData, setAdminEditFormData] = useState({
+    username: '',
+    email: '',
+    first_name: '',
+    last_name: '',
+    registration_number: '',
+    department: '',
+    description: ''
+  });
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -105,8 +115,23 @@ const StudentManagement = () => {
       resetForm();
     } catch (error) {
       console.error('Error details:', error.response?.data);
-      if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
+      if (error.response?.data) {
+        // Handle field-specific validation errors
+        const errorMessages = [];
+        if (typeof error.response.data === 'object') {
+          Object.entries(error.response.data).forEach(([field, messages]) => {
+            if (Array.isArray(messages)) {
+              errorMessages.push(...messages);
+            } else {
+              errorMessages.push(messages);
+            }
+          });
+          setError(errorMessages.join(', '));
+        } else if (error.response.data.detail) {
+          setError(error.response.data.detail);
+        } else {
+          setError(error.response.data);
+        }
       } else {
         setError('An error occurred while saving the student. Please try again.');
       }
@@ -142,6 +167,56 @@ const StudentManagement = () => {
         setLoading(false);
       }
     }
+  };
+
+  const handleAdminEdit = (student) => {
+    setSelectedStudent(student);
+    setAdminEditFormData({
+      username: student.username,
+      email: student.email,
+      first_name: student.first_name || '',
+      last_name: student.last_name || '',
+      registration_number: student.registration_number || '',
+      department: student.department || '',
+      description: student.description || ''
+    });
+    setShowAdminEditModal(true);
+  };
+
+  const handleAdminEditSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axiosInstance.put(
+        `/api/students/${selectedStudent.id}/admin-edit/`,
+        adminEditFormData
+      );
+      console.log('Admin edit response:', response.data);
+      setSuccess('Student details updated successfully');
+      setShowAdminEditModal(false);
+      fetchStudents();
+    } catch (error) {
+      console.error('Admin edit error:', error.response?.data);
+      if (error.response?.data) {
+        const errorMessages = Object.values(error.response.data).flat().join(', ');
+        setError(errorMessages);
+      } else {
+        setError('Failed to update student details');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setAdminEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const resetForm = () => {
@@ -278,11 +353,8 @@ const StudentManagement = () => {
   };
 
   return (
-    <div className="d-flex">
-      <Sidebar />
-      <div className="flex-grow-1" style={{ marginLeft: '250px' }}>
-        <Navbar />
-        <div className="p-4" style={{ marginTop: '60px' }}>
+    <Layout>
+        <div className="p-2 p-md-4">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="mb-0">Student Management</h2>
             <div className="d-flex gap-2">
@@ -407,14 +479,16 @@ const StudentManagement = () => {
                   </td>
                   <td>
                     <div className="d-flex gap-2">
-                      <Button 
-                        variant="info" 
-                        size="sm" 
-                        onClick={() => handleEdit(student)}
-                        disabled={loading}
-                      >
-                        Edit
-                      </Button>
+                      {userRole === 'admin' && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleAdminEdit(student)}
+                          disabled={loading}
+                        >
+                          Edit Details
+                        </Button>
+                      )}
                       {userRole === 'coordinator' && (
                         <Button
                           variant="warning"
@@ -554,46 +628,44 @@ const StudentManagement = () => {
               </Modal.Title>
             </Modal.Header>
             <Modal.Body>
-              <div>
-                <p className="mb-3">
-                  Selected Students: <strong>{selectedStudents.length}</strong>
-                </p>
-                <div className="mb-3 max-height-200 overflow-auto">
-                  <ul className="list-unstyled">
-                    {selectedStudents.map(id => {
-                      const student = students.find(s => s.id === id);
-                      return (
-                        <li key={id} className="mb-1">
-                          • {student?.first_name} {student?.last_name} 
-                          {student?.registration_number && ` (${student.registration_number})`}
-                          {student?.guide_name && (
-                            <span className="text-muted ms-1">
-                              - Current Guide: {student.guide_name}
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Select Guide</Form.Label>
-                  <Form.Select
-                    value={selectedGuide}
-                    onChange={(e) => setSelectedGuide(e.target.value)}
-                    disabled={loading}
-                  >
-                    <option value="">Choose a guide...</option>
-                    <option value="">-- Remove Current Guide --</option>
-                    {faculties.map(faculty => (
-                      <option key={faculty.id} value={faculty.id}>
-                        {faculty.first_name} {faculty.last_name} ({faculty.email})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+              <p className="mb-2">
+                You're changing guide for {selectedStudents.length} student(s).
+              </p>
+              <div className="mb-3 max-height-200 overflow-auto">
+                <ul className="list-unstyled">
+                  {selectedStudents.map(id => {
+                    const student = students.find(s => s.id === id);
+                    return (
+                      <li key={id} className="mb-1">
+                        • {student?.first_name} {student?.last_name}
+                        {student?.registration_number && ` (${student.registration_number})`}
+                        {student?.guide_name && (
+                          <span className="text-muted ms-1">
+                            - Current Guide: {student.guide_name}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Select Guide</Form.Label>
+                <Form.Select
+                  value={selectedGuide}
+                  onChange={(e) => setSelectedGuide(e.target.value)}
+                  disabled={loading}
+                >
+                  <option value="">Choose a guide...</option>
+                  <option value="">-- Remove Current Guide --</option>
+                  {faculties.map(faculty => (
+                    <option key={faculty.id} value={faculty.id}>
+                      {faculty.first_name} {faculty.last_name} ({faculty.email})
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={() => setShowChangeGuideModal(false)} disabled={loading}>
@@ -608,9 +680,135 @@ const StudentManagement = () => {
               </Button>
             </Modal.Footer>
           </Modal>
+
+          {/* Admin Edit Modal */}
+          <Modal show={showAdminEditModal} onHide={() => setShowAdminEditModal(false)} size="lg">
+            <Modal.Header closeButton>
+              <Modal.Title>Edit Student Details (Admin Only)</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form onSubmit={handleAdminEditSubmit}>
+                <div className="row">
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Username *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="username"
+                        value={adminEditFormData.username}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Email *</Form.Label>
+                      <Form.Control
+                        type="email"
+                        name="email"
+                        value={adminEditFormData.email}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>First Name *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="first_name"
+                        value={adminEditFormData.first_name}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Last Name *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="last_name"
+                        value={adminEditFormData.last_name}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Registration Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="registration_number"
+                        value={adminEditFormData.registration_number}
+                        onChange={handleAdminEditInputChange}
+                        disabled={loading}
+                        placeholder="e.g. 2024001"
+                      />
+                    </Form.Group>
+                  </div>
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Department</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="department"
+                        value={adminEditFormData.department}
+                        onChange={handleAdminEditInputChange}
+                        disabled={loading}
+                        placeholder="e.g. Computer Science"
+                      />
+                    </Form.Group>
+                  </div>
+                </div>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    name="description"
+                    value={adminEditFormData.description}
+                    onChange={handleAdminEditInputChange}
+                    disabled={loading}
+                    placeholder="Student description or notes..."
+                    maxLength={500}
+                  />
+                  <Form.Text className="text-muted">
+                    {adminEditFormData.description.length}/500 characters
+                  </Form.Text>
+                </Form.Group>
+
+                <div className="d-flex justify-content-end gap-2">
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => setShowAdminEditModal(false)} 
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={loading}>
+                    {loading ? 'Updating...' : 'Update Student'}
+                  </Button>
+                </div>
+              </Form>
+            </Modal.Body>
+          </Modal>
         </div>
-      </div>
-    </div>
+    </Layout>
   );
 };
 

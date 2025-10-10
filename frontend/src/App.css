@@ -1,8 +1,8 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }
 
 .logo {
@@ -39,4 +39,69 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Mobile Sidebar Enhancements */
+@media (max-width: 768px) {
+  /* Prevent body scroll when mobile sidebar is open */
+  body.mobile-sidebar-open {
+    overflow: hidden;
+  }
+  
+  /* Improve sidebar overlay */
+  .sidebar-overlay {
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  /* Sidebar animation */
+  .sidebar-mobile {
+    animation: slideInLeft 0.3s ease-out;
+  }
+  
+  .sidebar-mobile.closing {
+    animation: slideOutLeft 0.3s ease-out;
+  }
+  
+  /* Hamburger menu animation */
+  .hamburger-menu {
+    transition: transform 0.2s ease;
+  }
+  
+  .hamburger-menu:hover {
+    transform: scale(1.1);
+  }
+  
+  /* Close button hover effect */
+  .btn-close:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { 
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to { 
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutLeft {
+  from { 
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to { 
+    transform: translateX(-100%);
+    opacity: 0;
+  }
 }

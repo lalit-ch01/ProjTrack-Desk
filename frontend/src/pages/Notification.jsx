@@ -1,11 +1,14 @@
 import React from 'react';
+import Layout from '../components/Layout';
 
 const Notification = () => {
   return (
-    <div className="container mt-5 pt-4">
-      <h2>Notifications</h2>
-      <p>You have no new notifications.</p>
-    </div>
+    <Layout>
+      <div className="container">
+        <h2>Notifications</h2>
+        <p>You have no new notifications.</p>
+      </div>
+    </Layout>
   );
 };
 

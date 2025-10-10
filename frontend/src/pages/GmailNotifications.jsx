@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert, Card, Table, Badge, ButtonGroup, Dropdown } from 'react-bootstrap';
-import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import Layout from '../components/Layout';
 import axiosInstance from '../utils/axios';
 import moment from 'moment';
 
@@ -15,10 +14,12 @@ const NotificationManagement = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [selectedNotifications, setSelectedNotifications] = useState([]);
+  const [expandedRecipients, setExpandedRecipients] = useState({});
   const [currentView, setCurrentView] = useState('inbox'); // inbox, sent, unread
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const userRole = localStorage.getItem('role');
+  const currentUserId = parseInt(localStorage.getItem('userId'));
   const canSendNotifications = ['admin', 'coordinator', 'guide'].includes(userRole);
 
   const [formData, setFormData] = useState({
@@ -121,7 +122,8 @@ const NotificationManagement = () => {
   const handleNotificationClick = (notification) => {
     setSelectedNotification(notification);
     setShowDetailModal(true);
-    if (!notification.read) {
+    // Only mark as read if not in sent view and notification is unread
+    if (currentView !== 'sent' && !notification.read) {
       markAsRead(notification.id);
     }
   };
@@ -216,13 +218,16 @@ const NotificationManagement = () => {
     );
   };
 
+  const toggleRecipients = (notificationId) => {
+    setExpandedRecipients(prev => ({
+      ...prev,
+      [notificationId]: !prev[notificationId]
+    }));
+  };
+
   return (
-    <div>
-      <Navbar />
-      <div className="d-flex">
-        <Sidebar />
-        <div className="flex-grow-1" style={{ marginLeft: '250px', marginTop: '56px' }}>
-          <div className="p-4">
+    <Layout>
+          <div className="p-2 p-md-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h2>Notifications</h2>
               {canSendNotifications && (
@@ -274,20 +279,24 @@ const NotificationManagement = () => {
                 />
                 {selectedNotifications.length > 0 && (
                   <ButtonGroup>
-                    <Button 
-                      variant="outline-success" 
-                      size="sm"
-                      onClick={() => handleBulkAction('mark_read')}
-                    >
-                      Mark Read
-                    </Button>
-                    <Button 
-                      variant="outline-warning" 
-                      size="sm"
-                      onClick={() => handleBulkAction('mark_unread')}
-                    >
-                      Mark Unread
-                    </Button>
+                    {currentView !== 'sent' && (
+                      <>
+                        <Button 
+                          variant="outline-success" 
+                          size="sm"
+                          onClick={() => handleBulkAction('mark_read')}
+                        >
+                          Mark Read
+                        </Button>
+                        <Button 
+                          variant="outline-warning" 
+                          size="sm"
+                          onClick={() => handleBulkAction('mark_unread')}
+                        >
+                          Mark Unread
+                        </Button>
+                      </>
+                    )}
                     <Button 
                       variant="outline-danger" 
                       size="sm"
@@ -298,9 +307,11 @@ const NotificationManagement = () => {
                   </ButtonGroup>
                 )}
               </div>
-              <Button variant="outline-secondary" size="sm" onClick={markAllRead}>
-                Mark All Read
-              </Button>
+              {currentView !== 'sent' && (
+                <Button variant="outline-secondary" size="sm" onClick={markAllRead}>
+                  Mark All Read
+                </Button>
+              )}
             </div>
 
             {/* Notifications List */}
@@ -340,16 +351,18 @@ const NotificationManagement = () => {
                             </small>
                             <div className="mt-1">
                               <ButtonGroup size="sm">
-                                <Button 
-                                  variant="outline-secondary" 
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    notification.read ? markAsUnread(notification.id) : markAsRead(notification.id);
-                                  }}
-                                >
-                                  {notification.read ? 'Mark Unread' : 'Mark Read'}
-                                </Button>
+                                {currentView !== 'sent' && (
+                                  <Button 
+                                    variant="outline-secondary" 
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      notification.read ? markAsUnread(notification.id) : markAsRead(notification.id);
+                                    }}
+                                  >
+                                    {notification.read ? 'Mark Unread' : 'Mark Read'}
+                                  </Button>
+                                )}
                                 <Button 
                                   variant="outline-danger" 
                                   size="sm"
@@ -418,9 +431,9 @@ const NotificationManagement = () => {
                       style={{ height: '200px' }}
                       required
                     >
-                      {users.map(user => (
+                      {users.filter(user => user.id !== currentUserId).map(user => (
                         <option key={user.id} value={user.id}>
-                          {user.first_name} {user.last_name} ({user.role}) - {user.username}
+                          {user.first_name} {user.last_name} - ({user.role})
                         </option>
                       ))}
                     </Form.Select>
@@ -480,7 +493,36 @@ const NotificationManagement = () => {
                     </div>
                     {currentView === 'sent' && (
                       <div className="mb-3">
-                        <strong>Recipients:</strong> {selectedNotification.recipient_count} users
+                        <div className="d-flex align-items-center gap-2 mb-2">
+                          <strong>Recipients:</strong> 
+                          <span className="badge bg-primary">{selectedNotification.recipients ? selectedNotification.recipients.length : 0} users</span>
+                          <Button 
+                            variant="outline-secondary" 
+                            size="sm"
+                            onClick={() => toggleRecipients(selectedNotification.id)}
+                          >
+                            {expandedRecipients[selectedNotification.id] ? 'Hide Details' : 'Show Details'}
+                          </Button>
+                        </div>
+                        {expandedRecipients[selectedNotification.id] && selectedNotification.recipients && (
+                          <div className="border p-3 bg-light rounded">
+                            {selectedNotification.recipients.map((recipient, index) => (
+                              <div key={index} className="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                <div>
+                                  <div className="fw-bold">{recipient.name}</div>
+                                  <div className="text-muted small">{recipient.role}</div>
+                                </div>
+                                <div>
+                                  {recipient.read ? (
+                                    <Badge bg="success">Read</Badge>
+                                  ) : (
+                                    <Badge bg="secondary">Unread</Badge>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -512,12 +554,21 @@ const NotificationManagement = () => {
                     </Button>
                   </>
                 )}
+                {selectedNotification && currentView === 'sent' && (
+                  <Button 
+                    variant="danger"
+                    onClick={() => {
+                      deleteNotification(selectedNotification.id);
+                      setShowDetailModal(false);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                )}
               </Modal.Footer>
             </Modal>
           </div>
-        </div>
-      </div>
-    </div>
+    </Layout>
   );
 };
 

@@ -1,22 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Alert } from 'react-bootstrap';
-import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
+import Layout from '../components/Layout';
 import axiosInstance from '../utils/axios';
 
 const FacultyManagement = () => {
   const [faculties, setFaculties] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showAdminEditModal, setShowAdminEditModal] = useState(false);
   const [selectedFaculty, setSelectedFaculty] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     first_name: '',
     last_name: '',
+    registration_number: '',
+    department: '',
     role: 'guide'  // This will always be guide for new faculty
+  });
+  const [adminEditFormData, setAdminEditFormData] = useState({
+    username: '',
+    email: '',
+    first_name: '',
+    last_name: '',
+    registration_number: '',
+    department: '',
+    description: ''
   });
 
   const userRole = localStorage.getItem('role');
@@ -70,14 +82,23 @@ const FacultyManagement = () => {
       resetForm();
     } catch (error) {
       console.error('Error details:', error.response?.data);
-      if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
-      } else if (error.response?.data?.username) {
-        setError(`Username error: ${error.response.data.username[0]}`);
-      } else if (error.response?.data?.email) {
-        setError(`Email error: ${error.response.data.email[0]}`);
-      } else if (error.response?.data?.password) {
-        setError(`Password error: ${error.response.data.password[0]}`);
+      if (error.response?.data) {
+        // Handle field-specific validation errors
+        const errorMessages = [];
+        if (typeof error.response.data === 'object') {
+          Object.entries(error.response.data).forEach(([field, messages]) => {
+            if (Array.isArray(messages)) {
+              errorMessages.push(...messages);
+            } else {
+              errorMessages.push(messages);
+            }
+          });
+          setError(errorMessages.join(', '));
+        } else if (error.response.data.detail) {
+          setError(error.response.data.detail);
+        } else {
+          setError(error.response.data);
+        }
       } else {
         setError('An error occurred while saving the faculty member. Please try again.');
       }
@@ -86,14 +107,16 @@ const FacultyManagement = () => {
 
   const handleEdit = (faculty) => {
     setSelectedFaculty(faculty);
-    setFormData({
+    setAdminEditFormData({
       username: faculty.username,
       email: faculty.email,
       first_name: faculty.first_name || '',
       last_name: faculty.last_name || '',
-      role: faculty.role
+      registration_number: faculty.registration_number || '',
+      department: faculty.department || '',
+      description: faculty.description || ''
     });
-    setShowModal(true);
+    setShowAdminEditModal(true);
   };
 
   const handleDelete = async (id) => {
@@ -115,6 +138,8 @@ const FacultyManagement = () => {
       password: '',
       first_name: '',
       last_name: '',
+      registration_number: '',
+      department: '',
       role: 'guide'
     });
     setSelectedFaculty(null);
@@ -144,12 +169,45 @@ const FacultyManagement = () => {
     }
   };
 
+  const handleAdminEditSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await axiosInstance.put(
+        `/api/faculty/${selectedFaculty.id}/admin-edit/`,
+        adminEditFormData
+      );
+      console.log('Admin edit response:', response.data);
+      setSuccess('Faculty details updated successfully');
+      setShowAdminEditModal(false);
+      fetchFaculties();
+    } catch (error) {
+      console.error('Admin edit error:', error.response?.data);
+      if (error.response?.data) {
+        const errorMessages = Object.values(error.response.data).flat().join(', ');
+        setError(errorMessages);
+      } else {
+        setError('Failed to update faculty details');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setAdminEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
-    <div className="d-flex">
-      <Sidebar />
-      <div className="flex-grow-1" style={{ marginLeft: '250px', marginTop: '56px' }}>
-        <Navbar />
-        <div className="p-4">
+    <Layout>
+        <div className="p-2 p-md-4">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="mb-0">Faculty Management</h2>
             {userRole === 'admin' && (
@@ -183,7 +241,7 @@ const FacultyManagement = () => {
                     {userRole === 'admin' && (
                       <div className="d-flex flex-wrap gap-2">
                         <Button variant="info" size="sm" onClick={() => handleEdit(faculty)}>
-                          Edit
+                          Edit Details
                         </Button>
                         <Button variant="danger" size="sm" onClick={() => handleDelete(faculty.id)}>
                           Delete
@@ -267,6 +325,28 @@ const FacultyManagement = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
+                  <Form.Label>Registration Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="registration_number"
+                    value={formData.registration_number}
+                    onChange={handleInputChange}
+                    placeholder="e.g. FAC001"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Department</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Computer Science"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
                   <Form.Label>Role</Form.Label>
                   <Form.Control
                     type="text"
@@ -286,9 +366,135 @@ const FacultyManagement = () => {
               </Form>
             </Modal.Body>
           </Modal>
+
+          {/* Admin Edit Modal */}
+          <Modal show={showAdminEditModal} onHide={() => setShowAdminEditModal(false)} size="lg">
+            <Modal.Header closeButton>
+              <Modal.Title>Edit Faculty Details (Admin Only)</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form onSubmit={handleAdminEditSubmit}>
+                <div className="row">
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Username *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="username"
+                        value={adminEditFormData.username}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Email *</Form.Label>
+                      <Form.Control
+                        type="email"
+                        name="email"
+                        value={adminEditFormData.email}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>First Name *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="first_name"
+                        value={adminEditFormData.first_name}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Last Name *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="last_name"
+                        value={adminEditFormData.last_name}
+                        onChange={handleAdminEditInputChange}
+                        required
+                        disabled={loading}
+                      />
+                    </Form.Group>
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Registration Number</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="registration_number"
+                        value={adminEditFormData.registration_number}
+                        onChange={handleAdminEditInputChange}
+                        disabled={loading}
+                        placeholder="e.g. FAC001"
+                      />
+                    </Form.Group>
+                  </div>
+                  <div className="col-md-6">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Department</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="department"
+                        value={adminEditFormData.department}
+                        onChange={handleAdminEditInputChange}
+                        disabled={loading}
+                        placeholder="e.g. Computer Science"
+                      />
+                    </Form.Group>
+                  </div>
+                </div>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    name="description"
+                    value={adminEditFormData.description}
+                    onChange={handleAdminEditInputChange}
+                    disabled={loading}
+                    placeholder="Faculty description or notes..."
+                    maxLength={500}
+                  />
+                  <Form.Text className="text-muted">
+                    {adminEditFormData.description.length}/500 characters
+                  </Form.Text>
+                </Form.Group>
+
+                <div className="d-flex justify-content-end gap-2">
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => setShowAdminEditModal(false)} 
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={loading}>
+                    {loading ? 'Updating...' : 'Update Faculty'}
+                  </Button>
+                </div>
+              </Form>
+            </Modal.Body>
+          </Modal>
         </div>
-      </div>
-    </div>
+    </Layout>
   );
 };
 

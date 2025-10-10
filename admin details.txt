@@ -1,0 +1,4 @@
+admin details: 
+username: admin
+email address: projtrackdeskadmin@gmail.com
+password: mca@2025

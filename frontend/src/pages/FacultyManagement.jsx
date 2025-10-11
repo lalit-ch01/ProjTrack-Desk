@@ -227,7 +227,7 @@ const FacultyManagement = () => {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Actions</th>
+                {userRole === 'admin' && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -237,8 +237,8 @@ const FacultyManagement = () => {
                   <td>{`${faculty.first_name} ${faculty.last_name}`.trim()}</td>
                   <td>{faculty.email}</td>
                   <td>{faculty.role}</td>
-                  <td style={{ minWidth: '300px' }}>
-                    {userRole === 'admin' && (
+                  {userRole === 'admin' && (
+                    <td style={{ minWidth: '300px' }}>
                       <div className="d-flex flex-wrap gap-2">
                         <Button variant="info" size="sm" onClick={() => handleEdit(faculty)}>
                           Edit Details
@@ -256,8 +256,8 @@ const FacultyManagement = () => {
                           </Button>
                         )}
                       </div>
-                    )}
-                  </td>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

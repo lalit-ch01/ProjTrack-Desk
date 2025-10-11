@@ -63,7 +63,9 @@ const StudentManagement = () => {
   const fetchFaculties = async () => {
     try {
       const response = await axiosInstance.get('/api/faculty/');
-      const guideFaculties = response.data.filter(faculty => faculty.role === 'guide');
+      const guideFaculties = response.data.filter(faculty => 
+        faculty.role === 'guide' || faculty.role === 'admin' || faculty.role === 'coordinator'
+      );
       setFaculties(guideFaculties);
     } catch (error) {
       console.error('Fetch error:', error.response?.data || error.message);
@@ -279,8 +281,8 @@ const StudentManagement = () => {
       });
       
       const successMessage = selectedGuide 
-        ? `Guide assigned to ${selectedStudents.length} student(s)` 
-        : `Guide removed from ${selectedStudents.length} student(s)`;
+        ? `Guide assigned to ${selectedStudents.length} student` 
+        : `Guide removed from ${selectedStudents.length} student`;
       
       setSuccess(successMessage);
       setShowChangeGuideModal(false);
@@ -367,56 +369,86 @@ const StudentManagement = () => {
                   Change Guide for Selected ({selectedStudents.length})
                 </Button>
               )}
-              <Button 
-                variant="primary" 
-                onClick={() => { setShowModal(true); resetForm(); }}
-                disabled={loading}
-              >
-                Add New Student
-              </Button>
+              {userRole === 'admin' && (
+                <Button 
+                  variant="primary" 
+                  onClick={() => { setShowModal(true); resetForm(); }}
+                  disabled={loading}
+                >
+                  Add New Student
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Filters and Search */}
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div className="d-flex gap-2">
-              <Button
-                variant={filter === 'all' ? 'primary' : 'outline-primary'}
-                onClick={() => setFilter('all')}
-              >
-                All Students
-              </Button>
-              <Button
-                variant={filter === 'assigned' ? 'primary' : 'outline-primary'}
-                onClick={() => setFilter('assigned')}
-              >
-                With Guide
-              </Button>
-              <Button
-                variant={filter === 'unassigned' ? 'primary' : 'outline-primary'}
-                onClick={() => setFilter('unassigned')}
-              >
-                Without Guide
-              </Button>
+          {/* Filters and Search - Only show filters for admin and coordinator */}
+          {userRole !== 'guide' && (
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div className="d-flex gap-2">
+                <Button
+                  variant={filter === 'all' ? 'primary' : 'outline-primary'}
+                  onClick={() => setFilter('all')}
+                >
+                  All Students
+                </Button>
+                <Button
+                  variant={filter === 'assigned' ? 'primary' : 'outline-primary'}
+                  onClick={() => setFilter('assigned')}
+                >
+                  With Guide
+                </Button>
+                <Button
+                  variant={filter === 'unassigned' ? 'primary' : 'outline-primary'}
+                  onClick={() => setFilter('unassigned')}
+                >
+                  Without Guide
+                </Button>
+              </div>
+              <div style={{ width: '300px' }}>
+                <InputGroup>
+                  <FormControl
+                    placeholder="Search students..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {searchTerm && (
+                    <Button 
+                      variant="outline-secondary"
+                      onClick={() => setSearchTerm('')}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </InputGroup>
+              </div>
             </div>
-            <div style={{ width: '300px' }}>
-              <InputGroup>
-                <FormControl
-                  placeholder="Search students..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {searchTerm && (
-                  <Button 
-                    variant="outline-secondary"
-                    onClick={() => setSearchTerm('')}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </InputGroup>
+          )}
+
+          {/* Search only for guides */}
+          {userRole === 'guide' && (
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 className="text-muted mb-0">My Assigned Students</h5>
+              </div>
+              <div style={{ width: '300px' }}>
+                <InputGroup>
+                  <FormControl
+                    placeholder="Search my students..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {searchTerm && (
+                    <Button 
+                      variant="outline-secondary"
+                      onClick={() => setSearchTerm('')}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </InputGroup>
+              </div>
             </div>
-          </div>
+          )}
 
           {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
           {success && <Alert variant="success" onClose={() => setSuccess('')} dismissible>{success}</Alert>}
@@ -441,7 +473,7 @@ const StudentManagement = () => {
                   <th>Registration Number</th>
                   <th>Department</th>
                   <th>Guide</th>
-                  <th>Actions</th>
+                  {userRole !== 'guide' && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -477,42 +509,46 @@ const StudentManagement = () => {
                       <Badge bg="warning">Not Assigned</Badge>
                     )}
                   </td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      {userRole === 'admin' && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleAdminEdit(student)}
-                          disabled={loading}
-                        >
-                          Edit Details
-                        </Button>
-                      )}
-                      {userRole === 'coordinator' && (
-                        <Button
-                          variant="warning"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedStudents([student.id]);
-                            setSelectedGuide('');
-                            setShowChangeGuideModal(true);
-                          }}
-                          disabled={loading}
-                        >
-                          {isStudentAssigned(student) ? 'Change Guide' : 'Assign Guide'}
-                        </Button>
-                      )}
-                      <Button 
-                        variant="danger" 
-                        size="sm" 
-                        onClick={() => handleDelete(student.id)}
-                        disabled={loading}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
+                  {userRole !== 'guide' && (
+                    <td>
+                      <div className="d-flex gap-2">
+                        {userRole === 'admin' && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleAdminEdit(student)}
+                            disabled={loading}
+                          >
+                            Edit Details
+                          </Button>
+                        )}
+                        {userRole === 'coordinator' && (
+                          <Button
+                            variant="warning"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedStudents([student.id]);
+                              setSelectedGuide('');
+                              setShowChangeGuideModal(true);
+                            }}
+                            disabled={loading}
+                          >
+                            {isStudentAssigned(student) ? 'Change Guide' : 'Assign Guide'}
+                          </Button>
+                        )}
+                        {userRole === 'admin' && (
+                          <Button 
+                            variant="danger" 
+                            size="sm" 
+                            onClick={() => handleDelete(student.id)}
+                            disabled={loading}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -11,8 +11,8 @@ const Sidebar = () => {
     const checkAndSetRole = () => {
       const savedRole = localStorage.getItem("role");
       const isAdmin = localStorage.getItem("is_superuser") === "true";
-      console.log("Raw saved role:", savedRole);
-      console.log("Is Superuser:", isAdmin);
+      // console.log("Raw saved role:", savedRole);
+      // console.log("Is Superuser:", isAdmin);
 
       if (isAdmin) {
         setRole("admin");
@@ -144,7 +144,7 @@ const Sidebar = () => {
                   onClick={handleMenuClick}
                 >
                   <i className="bi bi-mortarboard me-2"></i>
-                  Student Management
+                  Students
                 </Link>
               </li>
             )}
@@ -162,60 +162,20 @@ const Sidebar = () => {
                     Faculties
                   </Link>
                 </li>
-                <li className="nav-item mb-2">
-                  <Link
-                    to="/students"
-                    className="nav-link text-dark d-flex align-items-center"
-                    onClick={handleMenuClick}
-                  >
-                    <i className="bi bi-people-fill me-2"></i>
-                    Students
-                  </Link>
-                </li>
-                <li className="nav-item mb-2">
-                  <Link
-                    to="/manage-projects"
-                    className="nav-link text-dark d-flex align-items-center"
-                    onClick={handleMenuClick}
-                  >
-                    <i className="bi bi-folder me-2"></i>
-                    Manage Projects
-                  </Link>
-                </li>
               </>
             )}
 
             {/* Coordinator-specific menu items */}
             {role === "coordinator" && (
               <>
-                <li className="nav-item mb-2">
+                              <li className="nav-item mb-2">
                   <Link
-                    to="/projects"
+                    to="/faculties"
                     className="nav-link text-dark d-flex align-items-center"
                     onClick={handleMenuClick}
                   >
-                    <i className="bi bi-kanban me-2"></i>
-                    Projects
-                  </Link>
-                </li>
-                <li className="nav-item mb-2">
-                  <Link
-                    to="/assign-guides"
-                    className="nav-link text-dark d-flex align-items-center"
-                    onClick={handleMenuClick}
-                  >
-                    <i className="bi bi-person-check me-2"></i>
-                    Assign Guides
-                  </Link>
-                </li>
-                <li className="nav-item mb-2">
-                  <Link
-                    to="/review-submissions"
-                    className="nav-link text-dark d-flex align-items-center"
-                    onClick={handleMenuClick}
-                  >
-                    <i className="bi bi-file-earmark-text me-2"></i>
-                    Review Submissions
+                    <i className="bi bi-person-badge me-2"></i>
+                    Faculties
                   </Link>
                 </li>
               </>
@@ -224,16 +184,6 @@ const Sidebar = () => {
             {/* Guide-specific menu items */}
             {role === "guide" && (
               <>
-                <li className="nav-item mb-2">
-                  <Link
-                    to="/my-projects"
-                    className="nav-link text-dark d-flex align-items-center"
-                    onClick={handleMenuClick}
-                  >
-                    <i className="bi bi-folder-check me-2"></i>
-                    My Projects
-                  </Link>
-                </li>
                 <li className="nav-item mb-2">
                   <Link
                     to="/evaluations"

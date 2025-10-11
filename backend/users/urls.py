@@ -4,7 +4,10 @@ from .views import (
     CustomTokenObtainPairView,
     StudentViewSet,
     guide_students,
-    all_users_for_notifications
+    all_users_for_notifications,
+    change_password,
+    forgot_password,
+    reset_password
 )
 from .faculty_views import FacultyViewSet
 from .calendar_views import CalendarEventViewSet, NotificationViewSet
@@ -23,6 +26,9 @@ urlpatterns = [
     path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/user/', UserDetailsView.as_view(), name='user-details'),
+    path('auth/change-password/', change_password, name='change-password'),
+    path('auth/forgot-password/', forgot_password, name='forgot-password'),
+    path('auth/reset-password/', reset_password, name='reset-password'),
     
     # Faculty and student endpoints
     path('guide-students/', guide_students, name='guide-students'),

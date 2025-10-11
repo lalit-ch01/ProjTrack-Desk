@@ -105,3 +105,100 @@
     opacity: 0;
   }
 }
+
+/* Custom Button Styles for Professional UI - Higher specificity to override Bootstrap */
+.btn.btn-warning {
+  --bs-btn-color: #fff !important;
+  --bs-btn-bg: #fd7e14 !important;
+  --bs-btn-border-color: #fd7e14 !important;
+  --bs-btn-hover-color: #fff !important;
+  --bs-btn-hover-bg: #e76500 !important;
+  --bs-btn-hover-border-color: #dc5f00 !important;
+  --bs-btn-focus-shadow-rgb: 253, 126, 20 !important;
+  --bs-btn-active-color: #fff !important;
+  --bs-btn-active-bg: #dc5f00 !important;
+  --bs-btn-active-border-color: #c95500 !important;
+  --bs-btn-disabled-color: #fff !important;
+  --bs-btn-disabled-bg: #fd7e14 !important;
+  --bs-btn-disabled-border-color: #fd7e14 !important;
+  
+  /* Enhanced styling for professional look */
+  font-weight: 500 !important;
+  letter-spacing: 0.025em !important;
+  box-shadow: 0 2px 4px rgba(253, 126, 20, 0.2) !important;
+  transition: all 0.2s ease-in-out !important;
+  background-color: #fd7e14 !important;
+  border-color: #fd7e14 !important;
+  color: #fff !important;
+}
+
+.btn.btn-warning:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(253, 126, 20, 0.3) !important;
+  background-color: #e76500 !important;
+  border-color: #dc5f00 !important;
+  color: #fff !important;
+}
+
+.btn.btn-warning:active,
+.btn.btn-warning.active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 4px rgba(253, 126, 20, 0.2) !important;
+  background-color: #dc5f00 !important;
+  border-color: #c95500 !important;
+  color: #fff !important;
+}
+
+.btn.btn-warning:focus {
+  box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.25) !important;
+}
+
+/* Small warning buttons for tables */
+.btn.btn-warning.btn-sm {
+  font-size: 0.8125rem !important;
+  padding: 0.25rem 0.75rem !important;
+  box-shadow: 0 1px 3px rgba(253, 126, 20, 0.2) !important;
+}
+
+.btn.btn-warning.btn-sm:hover {
+  transform: translateY(-0.5px) !important;
+  box-shadow: 0 2px 6px rgba(253, 126, 20, 0.3) !important;
+}
+
+/* Outline warning button compatibility */
+.btn.btn-outline-warning {
+  --bs-btn-color: #fd7e14 !important;
+  --bs-btn-border-color: #fd7e14 !important;
+  --bs-btn-hover-color: #fff !important;
+  --bs-btn-hover-bg: #fd7e14 !important;
+  --bs-btn-hover-border-color: #fd7e14 !important;
+  --bs-btn-focus-shadow-rgb: 253, 126, 20 !important;
+  --bs-btn-active-color: #fff !important;
+  --bs-btn-active-bg: #fd7e14 !important;
+  --bs-btn-active-border-color: #fd7e14 !important;
+  
+  font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+  color: #fd7e14 !important;
+  border-color: #fd7e14 !important;
+  background-color: transparent !important;
+}
+
+.btn.btn-outline-warning:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(253, 126, 20, 0.2) !important;
+  background-color: #fd7e14 !important;
+  border-color: #fd7e14 !important;
+  color: #fff !important;
+}
+
+/* Custom border-light style with blue border and background */
+.border-light {
+  --bs-border-opacity: 1;
+  border-color: rgb(27 131 235) !important;
+  background-color: rgba(27, 131, 235, 0.05) !important; /* Light blue background */
+}
+
+.border-3 {
+    border-width: 2px !important;
+}

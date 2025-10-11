@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import React, { useState } from "react";
 import { Form, Button, Alert, Card, Container, Row, Col } from 'react-bootstrap';
 
@@ -104,6 +104,15 @@ const Login = () => {
                 >
                   {loading ? 'Logging in...' : 'Log In'}
                 </Button>
+
+                <div className="text-center mb-3">
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-decoration-none text-primary"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
 
                 <div className="text-center">
                   <p className="mb-0 text-muted">

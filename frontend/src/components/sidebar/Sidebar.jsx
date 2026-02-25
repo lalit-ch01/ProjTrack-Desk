@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useResponsive } from "../contexts/ResponsiveContext";
+import { useResponsive } from "../../contexts/ResponsiveContext";
 
 const Sidebar = () => {
   const [role, setRole] = useState("");
@@ -11,8 +11,6 @@ const Sidebar = () => {
     const checkAndSetRole = () => {
       const savedRole = localStorage.getItem("role");
       const isAdmin = localStorage.getItem("is_superuser") === "true";
-      // console.log("Raw saved role:", savedRole);
-      // console.log("Is Superuser:", isAdmin);
 
       if (isAdmin) {
         setRole("admin");
@@ -27,19 +25,16 @@ const Sidebar = () => {
     };
 
     checkAndSetRole();
-    // Check role every 5 seconds in case it changes
     const interval = setInterval(checkAndSetRole, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Handle menu item click on mobile
   const handleMenuClick = () => {
     if (isMobile) {
       closeSidebar();
     }
   };
 
-  // Don't render sidebar on mobile when closed
   if (isMobile && !sidebarOpen) {
     return null;
   }
@@ -210,7 +205,7 @@ const Sidebar = () => {
             {/* Coordinator-specific menu items */}
             {role === "coordinator" && (
               <>
-                              <li className="nav-item mb-2">
+                <li className="nav-item mb-2">
                   <Link
                     to="/faculties"
                     className="nav-link text-dark d-flex align-items-center"
@@ -220,13 +215,6 @@ const Sidebar = () => {
                     Faculties
                   </Link>
                 </li>
-              </>
-            )}
-
-            {/* Guide-specific menu items */}
-            {role === "guide" && (
-              <>
-                {/* Remove old guide-specific items as they're replaced by main project management */}
               </>
             )}
 

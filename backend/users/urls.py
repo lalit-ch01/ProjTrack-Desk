@@ -11,6 +11,10 @@ from .views import (
 )
 from .faculty_views import FacultyViewSet
 from .calendar_views import CalendarEventViewSet, NotificationViewSet
+from .project_views import (
+    ProjectActivityViewSet, TopicSubmissionViewSet, ProjectReviewViewSet,
+    EventSubmissionViewSet
+)
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
 
@@ -20,6 +24,12 @@ router.register(r'students', StudentViewSet, basename='student')
 router.register(r'faculty', FacultyViewSet, basename='faculty')
 router.register(r'calendar', CalendarEventViewSet, basename='calendar')
 router.register(r'notifications', NotificationViewSet, basename='notifications')
+
+# Project Management Routes
+router.register(r'project-activities', ProjectActivityViewSet, basename='project-activities')
+router.register(r'topic-submissions', TopicSubmissionViewSet, basename='topic-submissions')
+router.register(r'project-reviews', ProjectReviewViewSet, basename='project-reviews')
+router.register(r'event-submissions', EventSubmissionViewSet, basename='event-submissions')
 
 urlpatterns = [
     # Auth endpoints
@@ -33,5 +43,5 @@ urlpatterns = [
     # Faculty and student endpoints
     path('guide-students/', guide_students, name='guide-students'),
     path('all-users/', all_users_for_notifications, name='all-users'),
-    path('', include(router.urls)),  # This will include faculty/ and students/ endpoints
+    path('', include(router.urls)),  # This will include all ViewSet endpoints
 ]

@@ -1,7 +1,7 @@
 import { useNavigate, Link } from "react-router-dom";
 import React, { useState } from "react";
 import { Form, Button, Alert, Card, Container, Row, Col } from 'react-bootstrap';
-import axiosInstance from '../utils/axios';
+import axiosInstance from '../../../utils/axios';
 
 const Login = () => {
   const [formData, setFormData] = useState({

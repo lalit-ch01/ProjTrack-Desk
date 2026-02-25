@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Button, Form, Card, Container, Row, Col, Modal } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import axiosInstance from '../utils/axios';
+import axiosInstance from '../../../utils/axios';
 
 const ForgotPassword = () => {
   const [formData, setFormData] = useState({

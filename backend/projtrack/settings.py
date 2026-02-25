@@ -145,6 +145,24 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# File upload settings for project management
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024   # 50MB
+
+# Allowed file types for project submissions
+ALLOWED_SUBMISSION_EXTENSIONS = [
+    '.pdf', '.doc', '.docx', '.txt', '.md',  # Documents
+    '.zip', '.rar', '.7z', '.tar', '.gz',    # Archives
+    '.jpg', '.jpeg', '.png', '.gif',         # Images
+    '.py', '.js', '.html', '.css', '.java',  # Code files
+    '.ppt', '.pptx', '.xls', '.xlsx'        # Presentations/Spreadsheets
+]
+
+# Maximum file size for different submission types
+MAX_SYLLABUS_SIZE = 10 * 1024 * 1024      # 10MB
+MAX_PROPOSAL_SIZE = 5 * 1024 * 1024       # 5MB  
+MAX_SUBMISSION_SIZE = 50 * 1024 * 1024    # 50MB
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
